@@ -7,15 +7,14 @@ BLIP_API                       = "http://blip.tv/player/episode/%s?skin=json&ver
 BLIP_SEARCH_API                = "http://www.blip.tv/search/view/?search=%s&skin=json&version=2&callback="
 BLIP_CATEGORY_API              = "http://www.blip.tv/%s?skin=json&version=2&callback="
 
-DEBUG                         = True
-CACHE_FRONTPAGE               = 64000 
-CACHE_SHOWPAGE                = CACHE_FRONTPAGE
-CACHE_RSS                     = 3200
-CACHE_EPISODE_RSS             = 640000 # This contains just one show so we can cache for ages
+CACHE_FRONTPAGE                = 64000 
+CACHE_SHOWPAGE                 = CACHE_FRONTPAGE
+CACHE_RSS                      = 3200
+CACHE_EPISODE_RSS              = 640000 # This contains just one show so we can cache for ages
 
 RSS_NAMESPACE                  = {'media':'http://search.yahoo.com/mrss/', 'blip':'http://blip.tv/dtd/blip/1.0'}
 
-ART = 'art-default.png'
+ART = 'art-default.jpg'
 ICON = 'icon-default.png'
 SEARCH = 'icon-search.png'
 
