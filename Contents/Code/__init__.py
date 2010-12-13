@@ -86,12 +86,12 @@ def ShowBrowser(sender, showUrl, order, title1):
 	except:
 	  blipid = None
 	  
-	Log(blipid)
+	#Log(blipid)
 	if blipid!=None:
   	  if len(blipid)>11:
 	    blipid = blipid[:blipid.rfind('+')]
 	
-	  jsonresponse = HTTP.Request(BLIP_API%blipid).content.replace('([{','[{').replace(']);',']')
+	  jsonresponse = HTTP.Request(BLIP_API%blipid).content.replace('([{','[{').replace(']);',']').replace("\'","'")
 	  for episodeInfo in JSON.ObjectFromString(jsonresponse):
 	    if "error" in episodeInfo:
 	      Log("Error")
@@ -114,9 +114,9 @@ def ShowCategoryNSearch(sender, query = None,category = None):
   dir = MediaContainer(viewGroup = 'Details')
 
   if query == None:
-    jsonresponse = HTTP.Request(BLIP_CATEGORY_API%category).content.replace('([{','[{').replace(']);',']')
+    jsonresponse = HTTP.Request(BLIP_CATEGORY_API%category).content.replace('([{','[{').replace(']);',']').replace("\'","'")
   else:
-    jsonresponse = HTTP.Request(BLIP_SEARCH_API%query).content.replace('([{','[{').replace(']);',']')
+    jsonresponse = HTTP.Request(BLIP_SEARCH_API%query).content.replace('([{','[{').replace(']);',']').replace("\'","'")
   for episodeInfo in JSON.ObjectFromString(jsonresponse):
     if "error" in episodeInfo:
       Log("Error")
