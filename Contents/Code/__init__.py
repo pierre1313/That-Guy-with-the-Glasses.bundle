@@ -3,7 +3,7 @@ import re
 TGWTG_PREFIX      = '/video/thatguywiththeglasses'
 TGWTG_URL         = 'http://thatguywiththeglasses.com'
 IMAGE_BASEURL     = 'http://a.images.blip.tv/'
-BLIP_API          = 'http://blip.tv/player/episode/%s?skin=json&version=2&callback='
+BLIP_API          = 'http://www.blip.tv/player/episode/%s?skin=json&version=2&callback='
 BLIP_SEARCH_API   = 'http://www.blip.tv/search/view/?search=%s&skin=json&version=2&callback='
 BLIP_CATEGORY_API = 'http://www.blip.tv/%s?skin=json&version=2&callback='
 
@@ -24,6 +24,9 @@ def Start():
   MediaContainer.viewGroup = 'List'
   MediaContainer.title1 = L('tgwtg')
   DirectoryItem.thumb = R(ICON)
+  VideoItem.thumb = R(ICON)
+  
+  HTTP.CacheTime = 3600
 
 def ShowSelector(sender=None, parentID='', title1=L('tgwtg'), title2=''):
   dir = MediaContainer()
@@ -62,11 +65,19 @@ def ShowSelector(sender=None, parentID='', title1=L('tgwtg'), title2=''):
 
   return dir
 
-def ShowBrowser(sender, showUrl, order, title1):
+def ShowBrowser(sender, showUrl, order, title1, page = 1):
+  PAGELEN = 20
+  dir = MediaContainer(title1 = title1, title2 = L(order), replaceParent = (page!=1), viewGroup = 'InfoList')
 
-  dir = MediaContainer(title1 = title1, title2 = L(order), viewGroup = 'InfoList')
-
-  for episode in  HTML.ElementFromURL(showUrl).xpath("//tr[starts-with(@class,'sectiontableentry')]"):
+  episodes = HTML.ElementFromURL(showUrl).xpath("//tr[starts-with(@class,'sectiontableentry')]");
+  if page > 1 :
+    dir.Append(Function(DirectoryItem(ShowBrowser,"Previous Page"), showUrl=showUrl, order=order, title1=title1, page = page - 1))  
+  if (page*PAGELEN-1>len(episodes)):
+    maxIndex = len(episodes)
+  else:
+    maxIndex = page*PAGELEN-1
+  
+  for episode in  episodes[(page-1)*PAGELEN:maxIndex]:
     url = TGWTG_URL + episode.xpath("./td[position()=2]/a")[0].get('href')
     try:
       blipid = HTML.ElementFromURL(url, cacheTime=CACHE_SHOWPAGE).xpath("//embed")[0].get('src')
@@ -97,6 +108,8 @@ def ShowBrowser(sender, showUrl, order, title1):
           duration = int(episodeInfo['media']['duration'])*1000
 
           dir.Append(VideoItem(url, title=title, subtitle=subtitle, thumb=Function(GetThumb, url=thumb), summary=summary, duration = duration))
+  if maxIndex != len(episodes):
+    dir.Append(Function(DirectoryItem(ShowBrowser,"Next Page"), showUrl=showUrl, order=order, title1=title1, page = page + 1))  
   return dir
 
 def ShowCategoryNSearch(sender, query = None,category = None):
