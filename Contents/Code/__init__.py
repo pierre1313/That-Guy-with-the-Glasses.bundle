@@ -44,7 +44,7 @@ def ShowSelector(sender=None, parentID='', title1=L('tgwtg'), title2=''):
     url = TGWTG_URL + child.xpath("./a")[0].get('href')
     title = child.xpath("./a/span")[0].text
     # Update : Some child can be skipped (no videos) for the root element. Not very clean, feel free to correct with a better way
-    if(title == 'Articles' or title == 'Home' or title == 'Site Stuff' or title == 'Store' or title == 'Community'):
+    if(title == 'Articles' or title == 'Home' or title == 'Site Stuff' or title == 'Store' or title == 'Community' or title == 'Blogs'):
       continue
     liClass = child.get('class')
     # If the child's class contains 'parent' then it has it's own children
@@ -58,10 +58,10 @@ def ShowSelector(sender=None, parentID='', title1=L('tgwtg'), title2=''):
       childId = liClass
       dir.Append(Function(DirectoryItem(ShowBrowser, title=title, thumb=R(ICON)), showUrl=url, order=title, title1=title2))
 
-  if sender == None:
-    for cat in ['popular', 'recent', 'random', 'featured']:
-      dir.Append(Function(DirectoryItem(ShowCategoryNSearch,str(cat).capitalize(), str(cat).capitalize(), str(cat).capitalize(), thumb=R(ICON)), category = cat))
-    dir.Append(Function(InputDirectoryItem(ShowCategoryNSearch,"Search...", "Search...", "Search...", thumb=R(SEARCH))))
+#   if sender == None:
+#     for cat in ['popular', 'recent', 'random', 'featured']:
+#       dir.Append(Function(DirectoryItem(ShowCategoryNSearch,str(cat).capitalize(), str(cat).capitalize(), str(cat).capitalize(), thumb=R(ICON)), category = cat))
+#     dir.Append(Function(InputDirectoryItem(ShowCategoryNSearch,"Search...", "Search...", "Search...", thumb=R(SEARCH))))
 
   return dir
 
