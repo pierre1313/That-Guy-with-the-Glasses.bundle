@@ -110,7 +110,10 @@ def ShowBrowser(sender, showUrl, order, title1, page = 1):
           dir.Append(VideoItem(url, title=title, subtitle=subtitle, thumb=Function(GetThumb, url=thumb), summary=summary, duration = duration))
   if maxIndex != len(episodes):
     dir.Append(Function(DirectoryItem(ShowBrowser,"Next Page"), showUrl=showUrl, order=order, title1=title1, page = page + 1))  
-  return dir
+  if len(dir) == 0:
+    return MessageContainer("Error","This section does not contain any video")
+  else:
+    return dir
 
 def ShowCategoryNSearch(sender, query = None,category = None):
 
