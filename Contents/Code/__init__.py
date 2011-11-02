@@ -1,11 +1,12 @@
 import re
 
-TGWTG_PREFIX      = '/video/thatguywiththeglasses'
 TGWTG_URL         = 'http://thatguywiththeglasses.com'
 IMAGE_BASEURL     = 'http://a.images.blip.tv/'
-BLIP_API          = 'http://www.blip.tv/player/episode/%s?skin=json&version=2&callback='
-BLIP_SEARCH_API   = 'http://www.blip.tv/search/view/?search=%s&skin=json&version=2&callback='
-BLIP_CATEGORY_API = 'http://www.blip.tv/%s?skin=json&version=2&callback='
+BLIP_API          = 'http://www.blip.tv/player/episode/%s?skin=json&version=2'
+BLIP_SEARCH_API   = 'http://www.blip.tv/search/view/?search=%s&skin=json&version=2'
+BLIP_CATEGORY_API = 'http://www.blip.tv/%s?skin=json&version=2'
+
+SKIP_TITLES       = ('Home', 'Articles', 'Site Stuff', 'Store', 'Community', 'Blogs')
 
 CACHE_FRONTPAGE   = CACHE_1HOUR
 CACHE_SHOWPAGE    = CACHE_1WEEK
@@ -15,25 +16,27 @@ ICON              = 'icon-default.png'
 SEARCH            = 'icon-search.png'
 
 ####################################################################################################
-
 def Start():
-  Plugin.AddPrefixHandler(TGWTG_PREFIX, ShowSelector, L('tgwtg'), ICON, ART)
+  Plugin.AddPrefixHandler('/video/thatguywiththeglasses', ShowSelector, L('tgwtg'), ICON, ART)
   Plugin.AddViewGroup('List', viewMode='List', mediaType='items')
   Plugin.AddViewGroup('InfoList', viewMode='InfoList', mediaType='items')
+
   MediaContainer.art = R(ART)
   MediaContainer.viewGroup = 'List'
   MediaContainer.title1 = L('tgwtg')
   DirectoryItem.thumb = R(ICON)
   VideoItem.thumb = R(ICON)
-  
-  HTTP.CacheTime = 3600
 
+  HTTP.CacheTime = CACHE_1HOUR
+  HTTP.Headers['User-Agent'] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.6; rv:5.0) Gecko/20100101 Firefox/5.0'
+
+####################################################################################################
 def ShowSelector(sender=None, parentID='', title1=L('tgwtg'), title2=''):
   dir = MediaContainer()
 
   page = HTML.ElementFromURL(TGWTG_URL, cacheTime=CACHE_FRONTPAGE)
 
-  if(parentID == ''):
+  if parentID == '':
     parent = page.xpath("//ul[@class='menutop']")[0]
     children = parent.xpath("./li")
   else:
@@ -43,28 +46,31 @@ def ShowSelector(sender=None, parentID='', title1=L('tgwtg'), title2=''):
   for child in children:
     url = TGWTG_URL + child.xpath("./a")[0].get('href')
     title = child.xpath("./a/span")[0].text
+
     # Update : Some child can be skipped (no videos) for the root element. Not very clean, feel free to correct with a better way
-    if(title == 'Articles' or title == 'Home' or title == 'Site Stuff' or title == 'Store' or title == 'Community' or title == 'Blogs'):
+    if title in SKIP_TITLES:
       continue
     liClass = child.get('class')
+
     # If the child's class contains 'parent' then it has it's own children
     if liClass.count('parent') > 0:
       # Is a parent, extract the item
       #Update: $ removed, the class is at the start now
       childID = re.search(r'(item\d+)', liClass).group(1)
-      dir.Append(Function(DirectoryItem(ShowSelector, title=title, thumb=R(ICON)), parentID=childID, title1=title2, title2=title))
+      dir.Append(Function(DirectoryItem(ShowSelector, title=title), parentID=childID, title1=title2, title2=title))
     else:
       # Is not a parent, is a show, so pass to ShowBrowser
       childId = liClass
-      dir.Append(Function(DirectoryItem(ShowBrowser, title=title, thumb=R(ICON)), showUrl=url, order=title, title1=title2))
+      dir.Append(Function(DirectoryItem(ShowBrowser, title=title), showUrl=url, order=title, title1=title2))
 
 #   if sender == None:
 #     for cat in ['popular', 'recent', 'random', 'featured']:
-#       dir.Append(Function(DirectoryItem(ShowCategoryNSearch,str(cat).capitalize(), str(cat).capitalize(), str(cat).capitalize(), thumb=R(ICON)), category = cat))
+#       dir.Append(Function(DirectoryItem(ShowCategoryNSearch,str(cat).capitalize(), str(cat).capitalize(), str(cat).capitalize()), category = cat))
 #     dir.Append(Function(InputDirectoryItem(ShowCategoryNSearch,"Search...", "Search...", "Search...", thumb=R(SEARCH))))
 
   return dir
 
+####################################################################################################
 def ShowBrowser(sender, showUrl, order, title1, page = 1):
   PAGELEN = 20
   dir = MediaContainer(title1 = title1, title2 = L(order), replaceParent = (page!=1), viewGroup = 'InfoList')
@@ -72,12 +78,13 @@ def ShowBrowser(sender, showUrl, order, title1, page = 1):
   episodes = HTML.ElementFromURL(showUrl).xpath("//tr[starts-with(@class,'sectiontableentry')]");
   if page > 1 :
     dir.Append(Function(DirectoryItem(ShowBrowser,"Previous Page"), showUrl=showUrl, order=order, title1=title1, page = page - 1))  
-  if (page*PAGELEN-1>len(episodes)):
+
+  if page*PAGELEN-1 > len(episodes):
     maxIndex = len(episodes)
   else:
     maxIndex = page*PAGELEN-1
-  
-  for episode in  episodes[(page-1)*PAGELEN:maxIndex]:
+
+  for episode in episodes[(page-1)*PAGELEN:maxIndex]:
     url = TGWTG_URL + episode.xpath("./td[position()=2]/a")[0].get('href')
     try:
       blipid = HTML.ElementFromURL(url, cacheTime=CACHE_SHOWPAGE).xpath("//embed")[0].get('src')
@@ -86,36 +93,47 @@ def ShowBrowser(sender, showUrl, order, title1, page = 1):
       blipid = None
 
     #Log(blipid)
-    if blipid!=None:
-      if len(blipid)>11:
+    if blipid != None:
+      if len(blipid) > 11:
         blipid = blipid[:blipid.rfind('+')]
+        if '#' in blipid:
+          blipid = blipid.split('#')[-1]
 
-      jsonresponse = HTTP.Request(BLIP_API%blipid).content.replace('([{','[{').replace(']);',']').replace("\\'","'")
+      jsonresponse = HTTP.Request(BLIP_API%blipid, cacheTime=CACHE_SHOWPAGE).content
+      jsonresponse = re.search('blip_ws_results\(\[(.*)\]\);', jsonresponse, re.DOTALL).group(1)
+      episodeInfo = JSON.ObjectFromString(jsonresponse)
 
-      for episodeInfo in JSON.ObjectFromString(jsonresponse):
-        if "error" in episodeInfo:
-          continue
-#          Log("Error")
-        else:
-          url = episodeInfo['mediaUrl']
-          title = episodeInfo['title']
-          subtitle = episodeInfo['description']
-          summary = episodeInfo['description']
-          try:
-            thumb = episodeInfo['thumbnailUrl']
-          except:
-            thumb = None
-          duration = int(episodeInfo['media']['duration'])*1000
+      if 'Post' in episodeInfo:
+        episodeInfo = episodeInfo['Post']
 
-          dir.Append(VideoItem(url, title=title, subtitle=subtitle, thumb=Function(GetThumb, url=thumb), summary=summary, duration = duration))
+      if 'error' in episodeInfo:
+        #Log(episodeInfo['error'])
+        continue
+      elif 'mediaUrl' in episodeInfo:
+        url = episodeInfo['mediaUrl']
+        title = episodeInfo['title']
+        summary = episodeInfo['description']
+        try:
+          thumb = episodeInfo['thumbnailUrl']
+        except:
+          thumb = None
+        duration = int(episodeInfo['media']['duration'])*1000
+      else:
+        #Log("Error")
+        continue
+
+    dir.Append(VideoItem(url, title=title, thumb=Function(GetThumb, url=thumb), summary=summary, duration=duration))
+
   if maxIndex != len(episodes):
     dir.Append(Function(DirectoryItem(ShowBrowser,"Next Page"), showUrl=showUrl, order=order, title1=title1, page = page + 1))  
+
   if len(dir) == 0:
     return MessageContainer("Error","This section does not contain any video")
   else:
     return dir
 
-def ShowCategoryNSearch(sender, query = None,category = None):
+####################################################################################################
+def ShowCategoryNSearch(sender, query = None, category = None):
 
   dir = MediaContainer(viewGroup = 'InfoList')
 
@@ -126,7 +144,7 @@ def ShowCategoryNSearch(sender, query = None,category = None):
   for episodeInfo in JSON.ObjectFromString(jsonresponse):
     if "error" in episodeInfo:
       continue
-#      Log("Error")
+      #Log("Error")
     else:
       url = episodeInfo['mediaUrl']
       title = episodeInfo['title']
@@ -141,6 +159,7 @@ def ShowCategoryNSearch(sender, query = None,category = None):
       dir.Append(VideoItem(url, title=title, subtitle=subtitle, thumb=Function(GetThumb, url=thumb), summary=summary, duration=duration))
   return dir
 
+####################################################################################################
 def GetThumb(url):
   if url:
     try:
